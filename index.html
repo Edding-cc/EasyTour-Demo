@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EasyTour – Demo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📨</text></svg>">
+<style>
+/* ── Farbpaletten (1:1 aus ui/theme/Theme.kt) ─────────────────────────────── */
+:root {
+  --bg:      #141210;
+  --surface: #1E1B17;
+  --card:    #252018;
+  --border:  #35301F;
+  --text:    #F0EAD8;
+  --muted:   #857E68;
+  --success: #6EE7A0;
+  --danger:  #F87171;
+  --accent:  #F5C842;
+  /* M3-Baseline für Dialoge (App überschreibt AlertDialog-Container nicht) */
+  --dlg-bg:   #2B2930;
+  --dlg-text: #E6E0E9;
+  --dlg-muted:#CAC4D0;
+}
+body[data-theme="light"] {
+  --bg:      #FAF9F6;
+  --surface: #F2F0EB;
+  --card:    #EBE8E0;
+  --border:  #D4CEBF;
+  --text:    #1C1A16;
+  --muted:   #726A58;
+  --success: #16A34A;
+  --danger:  #DC2626;
+  --dlg-bg:   #ECE6F0;
+  --dlg-text: #1D1B20;
+  --dlg-muted:#49454F;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+/* ── "Handy"-Rahmen: mobil randlos, am Desktop zentriert ──────────────────── */
+#phone {
+  position: relative;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+@media (min-width: 500px) and (min-height: 700px) {
+  body { background: #0A0908; display: flex; align-items: center; }
+  body[data-theme="light"] { background: #DDD9CE; }
+  #phone {
+    height: min(860px, 100dvh - 32px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+  }
+}
+
+/* ── AppHeader ────────────────────────────────────────────────────────────── */
+#header {
+  background: var(--surface);
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+#headerLeft { display: flex; align-items: center; gap: 6px; }
+#logo {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.headerBtn {
+  width: 36px; height: 36px;
+  background: var(--bg);
+  border-radius: 9px;
+  display: none;
+  align-items: center; justify-content: center;
+  font-size: 15px; font-weight: bold;
+}
+#btnCancelTour { color: var(--danger); }
+#btnUndo { color: var(--text); font-size: 16px; font-weight: normal; }
+#tabbar {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 3px;
+  display: flex; gap: 3px;
+  margin-left: 16px;
+}
+.tab {
+  padding: 6px 13px;
+  border-radius: 8px;
+  font-size: 15px; line-height: 15px;
+  transition: background .2s;
+}
+.tab.active { background: var(--accent); }
+
+/* ── Setup-Screen (Main) ──────────────────────────────────────────────────── */
+main { flex: 1; overflow-y: auto; position: relative; }
+#screenSetup {
+  height: 100%;
+  padding: 0 24px;
+  display: flex; flex-direction: column;
+  align-items: stretch; justify-content: center;
+}
+#listCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;              /* shapes.extraLarge */
+  padding: 20px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+#listCard .emoji { font-size: 28px; }
+#listCard .name  { font-size: 18px; font-weight: bold; margin-top: 7px; }
+#listCard .sub   { font-size: 12px; color: var(--muted); }
+.bigBtn {
+  width: 100%; height: 56px;
+  border-radius: 28px;
+  font-size: 16px; font-weight: bold;
+}
+.bigBtn.filled   { background: var(--accent); color: var(--bg); font-size: 16px; }
+.bigBtn.outlined { border: 1px solid var(--border); color: var(--text); font-size: 15px; }
+#demoHint {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px; color: var(--muted); line-height: 18px;
+}
+
+/* ── Delivery-Screen ──────────────────────────────────────────────────────── */
+#screenDelivery { height: 100%; display: none; flex-direction: column; position: relative; }
+#deliveryScroll {
+  flex: 1; overflow-y: auto;
+  padding: 13px 13px 144px;         /* Platz für die Aktionsleiste unten */
+  display: flex; flex-direction: column; gap: 11px;
+}
+#noTour {
+  position: absolute; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 16px;
+}
+.label11 { font-size: 11px; font-weight: bold; color: var(--muted); }
+#dheader { display: flex; flex-direction: column; gap: 6px; }
+#dheaderRow { display: flex; align-items: center; justify-content: space-between; }
+#timerChip {
+  font-size: 14px; font-weight: bold;
+  color: var(--accent);
+  background: var(--surface);
+  border-radius: 8px;               /* shapes.small */
+  padding: 2px 8px;
+}
+#timerChip.paused { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+#fraction { font-size: 15px; font-weight: bold; color: var(--accent); }
+#progressTrack {
+  height: 5px; width: 100%;
+  background: var(--border);
+  border-radius: 3px; overflow: hidden;
+}
+#progressFill { height: 100%; width: 0%; background: var(--accent); transition: width .25s; }
+
+.addressCard {
+  background: var(--card);
+  border-radius: 28px;
+  padding: 22px 20px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+#stopCount { font-size: 11px; color: var(--muted); }
+#addrText  { font-size: 28px; font-weight: bold; margin-top: 2px; }
+#addrNotes { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+#stopList { display: flex; flex-direction: column; gap: 2px; }
+.stopItem {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 10px 11px;
+  display: flex; gap: 9px; align-items: flex-start;
+}
+.stopItem.faded { opacity: .42; }
+.stopItem .idx  { font-size: 11px; font-weight: bold; color: var(--muted); width: 22px; flex-shrink: 0; }
+.stopItem .body { flex: 1; min-width: 0; }
+.stopItem .t    { font-size: 14px; font-weight: bold; }
+.stopItem .n    { font-size: 12px; color: var(--muted); }
+.stopBadge {
+  background: var(--border);
+  border-radius: 4px;               /* shapes.extraSmall */
+  padding: 2px 6px;
+  font-size: 10px; font-weight: bold; color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Fertig!-Karte */
+#doneCard .emoji { font-size: 44px; }
+#doneCard .title { font-size: 28px; font-weight: bold; margin-top: 10px; }
+#doneCard .sub   { font-size: 14px; color: var(--muted); }
+.m3btn {
+  margin-top: 12px;
+  background: var(--accent); color: var(--bg);
+  height: 40px; padding: 0 24px;
+  border-radius: 20px;
+  font-size: 14px; font-weight: 500;
+}
+
+/* Aktionsleiste unten */
+#actionBar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 13px 13px calc(13px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px;
+}
+#btnDone {
+  width: 100%; height: 54px;
+  border-radius: 28px;
+  background: var(--success); color: var(--bg);
+  font-size: 16px; font-weight: bold;
+}
+#actionRow { display: flex; gap: 8px; }
+#actionRow button {
+  flex: 1; height: 46px;
+  border-radius: 23px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+button:disabled { opacity: .38; cursor: default; }
+
+/* ── Bemerkungs-Sheet ─────────────────────────────────────────────────────── */
+#overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.5);
+  display: none;
+  z-index: 10;
+}
+#sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--surface);
+  border-radius: 28px 28px 0 0;
+  padding: 0 15px calc(15px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .25s ease-out;
+}
+#overlay.open #sheet { transform: translateY(0); }
+#sheet .handle { width: 40px; height: 3px; background: var(--accent); margin: 10px auto 12px; }
+#sheet h2  { font-size: 16px; font-weight: bold; }
+#sheet .addr { font-size: 13px; color: var(--muted); margin: 10px 0; }
+#remarkInput {
+  width: 100%; min-height: 92px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit; font-size: 16px;
+  padding: 12px;
+  resize: none;
+}
+#remarkInput:focus { outline: none; border-color: var(--accent); }
+#remarkInput::placeholder { color: var(--muted); }
+#markRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+  cursor: pointer; user-select: none;
+}
+#markRow input { width: 19px; height: 19px; accent-color: var(--accent); cursor: pointer; }
+#sheetBtns { display: flex; gap: 8px; margin-top: 4px; }
+#btnRemarkSave {
+  flex: 2; height: 40px;
+  border-radius: 20px;
+  background: var(--accent); color: var(--bg);
+  font-size: 14px; font-weight: 500;
+}
+#btnRemarkCancel {
+  flex: 1; height: 40px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* ── Dialog (Tour abbrechen) ──────────────────────────────────────────────── */
+#dialogOverlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.5);
+  display: none; align-items: center; justify-content: center;
+  padding: 32px;
+  z-index: 20;
+}
+#dialog {
+  background: var(--dlg-bg); color: var(--dlg-text);
+  border-radius: 28px;
+  padding: 24px;
+  width: 100%; max-width: 320px;
+}
+#dialog h2 { font-size: 24px; font-weight: 400; margin-bottom: 14px; }
+#dialog p  { font-size: 14px; color: var(--dlg-muted); line-height: 20px; margin-bottom: 22px; }
+#dialogBtns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+#btnKeepGoing { color: var(--accent); font-size: 14px; font-weight: 500; padding: 10px 12px; }
+#btnConfirmCancel {
+  background: var(--danger); color: #fff;
+  height: 40px; padding: 0 20px;
+  border-radius: 20px;
+  font-size: 14px; font-weight: bold;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+#toast {
+  position: absolute; left: 50%; bottom: 150px;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  z-index: 30;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body data-theme="dark">
+<div id="phone">
+
+  <!-- AppHeader -->
+  <header id="header">
+    <div id="headerLeft">
+      <div id="logo" onclick="goHome()">📨</div>
+      <button id="btnCancelTour" class="headerBtn" onclick="askCancelTour()">✕</button>
+      <button id="btnUndo" class="headerBtn" onclick="undoLastAction()">↩</button>
+    </div>
+    <nav id="tabbar">
+      <button class="tab" id="tabDelivery" onclick="openDelivery()">🗺️</button>
+      <button class="tab" onclick="lockedTab()">✏️</button>
+      <button class="tab" onclick="lockedTab()">📊</button>
+      <button class="tab" onclick="lockedTab()">🕐</button>
+      <button class="tab" onclick="lockedTab()">⚙️</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Main-Screen (SetupScreen, verbundener Zustand) -->
+    <section id="screenSetup">
+      <div id="listCard">
+        <div class="emoji">📋</div>
+        <div class="name">Bezirk 108760</div>
+        <div class="sub">Aktuelle Liste</div>
+      </div>
+      <div style="height:20px"></div>
+      <button class="bigBtn filled" id="btnStartTour" onclick="startTour()">▶ Tour starten</button>
+      <div style="height:10px"></div>
+      <button class="bigBtn outlined" id="btnTheme" onclick="toggleTheme()">☀️ Light Mode</button>
+      <p id="demoHint">Kostenlose Demo – enthält Startbildschirm und Tour<br>mit einer Beispielliste (20 Adressen).</p>
+    </section>
+
+    <!-- DeliveryScreen -->
+    <section id="screenDelivery">
+      <div id="noTour">Aktuell läuft keine Tour</div>
+      <div id="deliveryScroll">
+        <div id="dheader">
+          <div id="dheaderRow">
+            <span class="label11">FORTSCHRITT</span>
+            <button id="timerChip" onclick="togglePause()">⏱ 00:00</button>
+            <span id="fraction">0 / 20</span>
+          </div>
+          <div id="progressTrack"><div id="progressFill"></div></div>
+        </div>
+
+        <div class="addressCard" id="addrCard">
+          <div id="stopCount">STOPP 1 VON 20</div>
+          <div id="addrText">–</div>
+          <div id="addrNotes"></div>
+        </div>
+
+        <div class="addressCard" id="doneCard" style="display:none">
+          <div class="emoji">🎉</div>
+          <div class="title">Fertig!</div>
+          <div class="sub">Alles ausgeliefert!</div>
+          <button class="m3btn" onclick="cancelTour()">Ohne Speichern beenden</button>
+          <button class="m3btn" onclick="lockedTab()">💾 Bericht speichern</button>
+        </div>
+
+        <span class="label11" id="nextStopsLabel">NÄCHSTE STOPPS</span>
+        <div id="stopList"></div>
+      </div>
+
+      <div id="actionBar">
+        <button id="btnDone" onclick="markDone()">Erledigt – Weiter</button>
+        <div id="actionRow">
+          <button id="btnSkip" onclick="skipAddress()">Überspringen</button>
+          <button id="btnRemark" onclick="openRemark()">Bemerkung</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bemerkungs-Sheet -->
+    <div id="overlay" onclick="if(event.target===this) closeRemark()">
+      <div id="sheet">
+        <div class="handle"></div>
+        <h2>Bemerkung hinterlassen</h2>
+        <div class="addr" id="remarkAddr"></div>
+        <textarea id="remarkInput" placeholder="Was ist aufgefallen?" maxlength="500"></textarea>
+        <label id="markRow"><input type="checkbox" id="markDelivered"> Als erledigt markieren</label>
+        <div id="sheetBtns">
+          <button id="btnRemarkSave" onclick="saveRemark()">✓ Speichern &amp; weiter</button>
+          <button id="btnRemarkCancel" onclick="closeRemark()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog: Tour abbrechen -->
+    <div id="dialogOverlay" onclick="if(event.target===this) hideDialog()">
+      <div id="dialog">
+        <h2>Tour abbrechen?</h2>
+        <p>Der bisherige Fortschritt geht verloren. Fortfahren?</p>
+        <div id="dialogBtns">
+          <button id="btnKeepGoing" onclick="hideDialog()">Weiter machen</button>
+          <button id="btnConfirmCancel" onclick="hideDialog(); cancelTour()">Tour abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast">🔒 Nur in der Vollversion verfügbar</div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+// ── Beispielliste (20 Adressen, Format wie Abonnentenlisten-Import) ─────────
+const addresses = [
+  { id:  1, text: "Ahornweg 2",      notes: "Fam. Sommer" },
+  { id:  2, text: "Ahornweg 5",      notes: "K. Brandt" },
+  { id:  3, text: "Ahornweg 11",     notes: "M. u. G. Winkler" },
+  { id:  4, text: "Birkenstraße 1",  notes: "Fam. Albrecht – Briefkasten am Gartentor" },
+  { id:  5, text: "Birkenstraße 4",  notes: "H. Neumann" },
+  { id:  6, text: "Birkenstraße 9",  notes: "Dr. S. Vogel" },
+  { id:  7, text: "Birkenstraße 14", notes: "Fam. Lorenz" },
+  { id:  8, text: "Drosselgasse 3",  notes: "E. Krämer" },
+  { id:  9, text: "Drosselgasse 7",  notes: "Fam. Böhm – 2 Zeitungen" },
+  { id: 10, text: "Feldstraße 6",    notes: "J. Hartmann" },
+  { id: 11, text: "Feldstraße 8",    notes: "R. Schuster" },
+  { id: 12, text: "Feldstraße 15",   notes: "Fam. Wiedemann" },
+  { id: 13, text: "Feldstraße 21",   notes: "A. Pohl – Seiteneingang" },
+  { id: 14, text: "Lindenplatz 2",   notes: "Fam. Merz" },
+  { id: 15, text: "Lindenplatz 3",   notes: "W. Janssen" },
+  { id: 16, text: "Mühlenweg 4",     notes: "Fam. Otte" },
+  { id: 17, text: "Mühlenweg 10",    notes: "C. Freitag" },
+  { id: 18, text: "Mühlenweg 12",    notes: "G. u. P. Roth" },
+  { id: 19, text: "Rosenhang 1",     notes: "Fam. Steiner" },
+  { id: 20, text: "Rosenhang 8",     notes: "B. Kirchner – Zeitung ins Rohr" }
+];
+const total = addresses.length;
+
+// ── Tour-Zustand (Logik gespiegelt aus AppViewModel) ────────────────────────
+let currentIdx   = 0;
+let delivered    = new Set();
+let skipped      = new Set();
+let remarks      = new Map();
+let undoStack    = [];               // { type, addressId, previousIdx, previousRemark }
+let tourActive   = false;
+let paused       = false;
+let startTime    = 0;
+let pausedMillis = 0;
+let pauseStart   = 0;
+let screen       = "setup";          // "setup" | "delivery"
+let timerHandle  = null;
+
+const $ = id => document.getElementById(id);
+const isDone = () => tourActive && currentIdx >= total;
+
+// ── Theme ───────────────────────────────────────────────────────────────────
+function applyTheme(t) {
+  document.body.dataset.theme = t;
+  // Button zeigt das Ziel des Wechsels (Strings aus den App-Einstellungen)
+  $("btnTheme").textContent = t === "dark" ? "☀️ Light Mode" : "🌑 Dark Mode";
+  try { localStorage.setItem("easytour-demo-theme", t); } catch (_) {}
+}
+function toggleTheme() {
+  applyTheme(document.body.dataset.theme === "dark" ? "light" : "dark");
+}
+try {
+  const saved = localStorage.getItem("easytour-demo-theme");
+  if (saved) applyTheme(saved);
+} catch (_) {}
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+function showScreen(s) {
+  screen = s;
+  $("screenSetup").style.display    = s === "setup"    ? "flex" : "none";
+  $("screenDelivery").style.display = s === "delivery" ? "flex" : "none";
+  render();
+}
+function goHome()       { showScreen("setup"); }
+function openDelivery() { showScreen("delivery"); }
+function lockedTab()    { toast("🔒 Nur in der Vollversion verfügbar"); }
+
+let toastHandle = null;
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastHandle);
+  toastHandle = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+// ── Tour-Aktionen ───────────────────────────────────────────────────────────
+function startTour() {
+  currentIdx   = 0;
+  delivered    = new Set();
+  skipped      = new Set();
+  remarks      = new Map();
+  undoStack    = [];
+  tourActive   = true;
+  paused       = false;
+  startTime    = Date.now();
+  pausedMillis = 0;
+  clearInterval(timerHandle);
+  timerHandle = setInterval(updateTimer, 500);
+  showScreen("delivery");
+}
+
+function cancelTour() {
+  tourActive = false;
+  paused     = false;
+  undoStack  = [];
+  clearInterval(timerHandle);
+  showScreen("setup");
+}
+
+function markDone() {
+  if (paused || isDone()) return;
+  const a = addresses[currentIdx];
+  undoStack.push({ type: "done", addressId: a.id, previousIdx: currentIdx, previousRemark: remarks.get(a.id) });
+  delivered.add(a.id);
+  currentIdx++;
+  render();
+}
+
+function skipAddress() {
+  if (paused || isDone()) return;
+  const a = addresses[currentIdx];
+  undoStack.push({ type: "skip", addressId: a.id, previousIdx: currentIdx, previousRemark: remarks.get(a.id) });
+  skipped.add(a.id);
+  currentIdx++;
+  render();
+}
+
+function addRemark(text, markDelivered) {
+  const a = addresses[currentIdx];
+  undoStack.push({ type: "remark", addressId: a.id, previousIdx: currentIdx, previousRemark: remarks.get(a.id) });
+  if (text.trim() === "") remarks.delete(a.id); else remarks.set(a.id, text.trim());
+  if (markDelivered) delivered.add(a.id);
+  currentIdx++;
+  render();
+}
+
+function undoLastAction() {
+  const action = undoStack.pop();
+  if (!action) return;
+  if (action.type === "done") delivered.delete(action.addressId);
+  if (action.type === "skip") skipped.delete(action.addressId);
+  if (action.type === "remark") {
+    if (action.previousRemark !== undefined) remarks.set(action.addressId, action.previousRemark);
+    else remarks.delete(action.addressId);
+  }
+  currentIdx = action.previousIdx;
+  render();
+}
+
+function togglePause() {
+  if (!tourActive || isDone()) return;
+  if (!paused) { pauseStart = Date.now(); }
+  else         { pausedMillis += Date.now() - pauseStart; }
+  paused = !paused;
+  render();
+}
+
+// ── Bemerkungs-Sheet ────────────────────────────────────────────────────────
+function openRemark() {
+  if (paused || isDone()) return;
+  const a = addresses[currentIdx];
+  $("remarkAddr").textContent = a.text;
+  $("remarkInput").value = remarks.get(a.id) || "";
+  $("markDelivered").checked = false;
+  $("overlay").style.display = "block";
+  requestAnimationFrame(() => $("overlay").classList.add("open"));
+}
+function closeRemark() {
+  $("overlay").classList.remove("open");
+  setTimeout(() => { $("overlay").style.display = "none"; }, 250);
+}
+function saveRemark() {
+  addRemark($("remarkInput").value, $("markDelivered").checked);
+  closeRemark();
+}
+
+// ── Dialog ──────────────────────────────────────────────────────────────────
+function askCancelTour() { $("dialogOverlay").style.display = "flex"; }
+function hideDialog()    { $("dialogOverlay").style.display = "none"; }
+
+// ── Timer ───────────────────────────────────────────────────────────────────
+function updateTimer() {
+  if (!tourActive || isDone()) return;
+  const now     = paused ? pauseStart : Date.now();
+  const elapsed = Math.max(0, now - startTime - pausedMillis);
+  const s = Math.floor(elapsed / 1000);
+  const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+  const pad = n => String(n).padStart(2, "0");
+  const t = hh > 0 ? `${pad(hh)}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
+  $("timerChip").textContent = (paused ? "⏸ " : "⏱ ") + t;
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function render() {
+  const done = isDone();
+
+  // Header: ✕ / ↩ nur auf dem Delivery-Screen bei laufender Tour
+  const showPause = screen === "delivery" && tourActive && !done;
+  $("btnCancelTour").style.display = showPause ? "flex" : "none";
+  $("btnUndo").style.display = (showPause && undoStack.length > 0 && !paused) ? "flex" : "none";
+  $("tabDelivery").classList.toggle("active", screen === "delivery");
+
+  // Main-Screen: Label wie in der App (laufende Tour → neu starten)
+  $("btnStartTour").textContent = tourActive ? "↺ Tour neu starten" : "▶ Tour starten";
+
+  if (screen !== "delivery") return;
+
+  // Kein laufende Tour → Platzhalter wie in der App
+  $("noTour").style.display        = tourActive ? "none" : "flex";
+  $("deliveryScroll").style.display = tourActive ? "flex" : "none";
+  $("actionBar").style.display     = (tourActive && !done) ? "flex" : "none";
+  if (!tourActive) return;
+
+  // Fortschritt
+  $("fraction").textContent = `${delivered.size} / ${total}`;
+  $("progressFill").style.width = (delivered.size / total * 100) + "%";
+  $("timerChip").style.display = done ? "none" : "inline-block";
+  $("timerChip").classList.toggle("paused", paused);
+  updateTimer();
+
+  // Aktuelle Adresse / Fertig-Karte
+  $("addrCard").style.display = done ? "none" : "flex";
+  $("doneCard").style.display = done ? "flex" : "none";
+  if (!done) {
+    const a = addresses[currentIdx];
+    $("stopCount").textContent = `STOPP ${currentIdx + 1} VON ${total}`;
+    $("addrText").textContent  = a.text;
+    $("addrNotes").textContent = a.notes;
+    $("addrNotes").style.display = a.notes ? "block" : "none";
+  }
+
+  // Buttons sperren, solange pausiert ist
+  $("btnDone").disabled   = paused;
+  $("btnSkip").disabled   = paused;
+  $("btnRemark").disabled = paused;
+
+  // Nächste Stopps
+  const hasNext = !done && currentIdx + 1 < total;
+  $("nextStopsLabel").style.display = hasNext ? "inline" : "none";
+  let html = "";
+  if (hasNext) {
+    for (let i = currentIdx + 1; i < total; i++) {
+      const a = addresses[i];
+      const isDel  = delivered.has(a.id);
+      const isSkip = skipped.has(a.id);
+      const badge  = isDel  ? '<span class="stopBadge">✓</span>'
+                   : isSkip ? '<span class="stopBadge">⏭ Übersprungen</span>'
+                   : remarks.has(a.id) ? '<span class="stopBadge">📝 Bemerkung</span>' : "";
+      html += `<div class="stopItem${(isDel || isSkip) ? " faded" : ""}">
+        <span class="idx">${i + 1}</span>
+        <div class="body"><div class="t">${escapeHtml(a.text)}</div>${a.notes ? `<div class="n">${escapeHtml(a.notes)}</div>` : ""}</div>
+        ${badge}</div>`;
+    }
+  }
+  $("stopList").innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
