@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -131,10 +131,30 @@ main { flex: 1; overflow-y: auto; position: relative; }
 }
 .bigBtn.filled   { background: var(--accent); color: var(--bg); font-size: 16px; }
 .bigBtn.outlined { border: 1px solid var(--border); color: var(--text); font-size: 15px; }
+.bigBtn.ghost    { color: var(--accent); font-size: 15px; }
 #demoHint {
   margin-top: 24px;
   text-align: center;
   font-size: 12px; color: var(--muted); line-height: 18px;
+}
+
+/* Buttons unten in den Ecken (nur Setup-Screen) */
+#cornerBar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between;
+  pointer-events: none;
+  z-index: 5;
+}
+#cornerBar button {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  height: 38px; padding: 0 14px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text);
+  display: flex; align-items: center; gap: 6px;
 }
 
 #screenDelivery { height: 100%; display: none; flex-direction: column; position: relative; }
@@ -309,14 +329,16 @@ button:disabled { opacity: .38; cursor: default; }
 }
 
 #toast {
-  position: absolute; left: 50%; bottom: 150px;
+  position: absolute; left: 50%; bottom: 200px;
   transform: translateX(-50%);
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
-  white-space: nowrap;
+  line-height: 18px;
+  max-width: calc(100% - 40px);
+  text-align: center;
   opacity: 0;
   transition: opacity .25s;
   pointer-events: none;
@@ -336,10 +358,10 @@ button:disabled { opacity: .38; cursor: default; }
     </div>
     <nav id="tabbar">
       <button class="tab" id="tabDelivery" onclick="openDelivery()">🗺️</button>
-      <button class="tab" onclick="lockedTab()">✏️</button>
-      <button class="tab" onclick="lockedTab()">📊</button>
-      <button class="tab" onclick="lockedTab()">🕐</button>
-      <button class="tab" onclick="lockedTab()">⚙️</button>
+      <button class="tab" onclick="lockedEditor()">✏️</button>
+      <button class="tab" onclick="lockedStats()">📊</button>
+      <button class="tab" onclick="lockedTimes()">🕐</button>
+      <button class="tab" onclick="lockedSettings()">⚙️</button>
     </nav>
   </header>
 
@@ -347,22 +369,24 @@ button:disabled { opacity: .38; cursor: default; }
     <section id="screenSetup">
       <div id="listCard">
         <div class="emoji">📋</div>
-        <div class="name">Deine Tour</div>
-        <div class="sub">Aktuelle Liste</div>
+        <div class="name" data-i18n="listName">Your tour</div>
+        <div class="sub" data-i18n="listSub">Current list</div>
       </div>
       <div style="height:20px"></div>
-      <button class="bigBtn filled" id="btnStartTour" onclick="startTour()">▶ Tour starten</button>
+      <button class="bigBtn filled" id="btnStartTour" onclick="startTour()" data-i18n="startTour">▶ Start tour</button>
       <div style="height:10px"></div>
-      <button class="bigBtn outlined" id="btnTheme" onclick="toggleTheme()">☀️ Light Mode</button>
-      <p id="demoHint">Kostenlose Demo – enthält Tour<br>mit einer Beispielliste (20 Adressen).</p>
+      <button class="bigBtn outlined" id="btnList" onclick="lockedList()" data-i18n="listImport">📋 Create / import list</button>
+      <div style="height:10px"></div>
+      <button class="bigBtn ghost" id="btnGetFull" onclick="getFullVersion()" data-i18n="getFull">⭐ Get full version</button>
+      <p id="demoHint" data-i18n="demoHint">Free demo – includes a tour<br>with one sample list (20 addresses).</p>
     </section>
 
     <section id="screenDelivery">
-      <div id="noTour">Aktuell läuft keine Tour</div>
+      <div id="noTour" data-i18n="noTour">No tour is currently running</div>
       <div id="deliveryScroll">
         <div id="dheader">
           <div id="dheaderRow">
-            <span class="label11">FORTSCHRITT</span>
+            <span class="label11" data-i18n="progress">PROGRESS</span>
             <button id="timerChip" onclick="togglePause()">⏱ 00:00</button>
             <span id="fraction">0 / 20</span>
           </div>
@@ -370,87 +394,239 @@ button:disabled { opacity: .38; cursor: default; }
         </div>
 
         <div class="addressCard" id="addrCard">
-          <div id="stopCount">STOPP 1 VON 20</div>
+          <div id="stopCount">STOP 1 OF 20</div>
           <div id="addrText">–</div>
           <div id="addrNotes"></div>
         </div>
 
         <div class="addressCard" id="doneCard" style="display:none">
           <div class="emoji">🎉</div>
-          <div class="title">Fertig!</div>
-          <div class="sub">Alles ausgeliefert!</div>
-          <button class="m3btn" onclick="cancelTour()">Ohne Speichern beenden</button>
-          <button class="m3btn" onclick="lockedTab()">💾 Bericht speichern</button>
+          <div class="title" data-i18n="doneTitle">Done!</div>
+          <div class="sub" data-i18n="doneSub">Everything delivered!</div>
+          <button class="m3btn" onclick="cancelTour()" data-i18n="exitNoSave">Exit without saving</button>
+          <button class="m3btn" onclick="lockedReport()" data-i18n="saveReport">💾 Save report</button>
         </div>
 
-        <span class="label11" id="nextStopsLabel">NÄCHSTE STOPPS</span>
+        <span class="label11" id="nextStopsLabel" data-i18n="nextStops">NEXT STOPS</span>
         <div id="stopList"></div>
       </div>
 
       <div id="actionBar">
-        <button id="btnDone" onclick="markDone()">Erledigt – Weiter</button>
+        <button id="btnDone" onclick="markDone()" data-i18n="btnDone">Delivered – Next</button>
         <div id="actionRow">
-          <button id="btnSkip" onclick="skipAddress()">Überspringen</button>
-          <button id="btnRemark" onclick="openRemark()">Bemerkung</button>
+          <button id="btnSkip" onclick="skipAddress()" data-i18n="btnSkip">Skip</button>
+          <button id="btnRemark" onclick="openRemark()" data-i18n="btnRemark">Note</button>
         </div>
       </div>
     </section>
 
+    <!-- Ecken-Buttons: nur im Setup-Screen sichtbar -->
+    <div id="cornerBar">
+      <button id="btnTheme" onclick="toggleTheme()"><span id="themeIcon">☀️</span> <span id="themeLabel">Light Mode</span></button>
+      <button id="btnLang" onclick="toggleLang()">🌐 <span id="langLabel">DE</span></button>
+    </div>
+
     <div id="overlay" onclick="if(event.target===this) closeRemark()">
       <div id="sheet">
         <div class="handle"></div>
-        <h2>Bemerkung hinterlassen</h2>
+        <h2 data-i18n="remarkTitle">Leave a note</h2>
         <div class="addr" id="remarkAddr"></div>
-        <textarea id="remarkInput" placeholder="Was ist aufgefallen?" maxlength="500"></textarea>
-        <label id="markRow"><input type="checkbox" id="markDelivered"> Als erledigt markieren</label>
+        <textarea id="remarkInput" data-i18n-ph="remarkPh" placeholder="What did you notice?" maxlength="500"></textarea>
+        <label id="markRow"><input type="checkbox" id="markDelivered"> <span data-i18n="markDelivered">Mark as delivered</span></label>
         <div id="sheetBtns">
-          <button id="btnRemarkSave" onclick="saveRemark()">✓ Speichern &amp; weiter</button>
-          <button id="btnRemarkCancel" onclick="closeRemark()">Abbrechen</button>
+          <button id="btnRemarkSave" onclick="saveRemark()" data-i18n="remarkSave">✓ Save &amp; continue</button>
+          <button id="btnRemarkCancel" onclick="closeRemark()" data-i18n="cancel">Cancel</button>
         </div>
       </div>
     </div>
 
     <div id="dialogOverlay" onclick="if(event.target===this) hideDialog()">
       <div id="dialog">
-        <h2>Tour abbrechen?</h2>
-        <p>Der bisherige Fortschritt geht verloren. Fortfahren?</p>
+        <h2 data-i18n="cancelTitle">Cancel tour?</h2>
+        <p data-i18n="cancelBody">Your current progress will be lost. Continue?</p>
         <div id="dialogBtns">
-          <button id="btnKeepGoing" onclick="hideDialog()">Weiter machen</button>
-          <button id="btnConfirmCancel" onclick="hideDialog(); cancelTour()">Tour abbrechen</button>
+          <button id="btnKeepGoing" onclick="hideDialog()" data-i18n="keepGoing">Keep going</button>
+          <button id="btnConfirmCancel" onclick="hideDialog(); cancelTour()" data-i18n="confirmCancel">Cancel tour</button>
         </div>
       </div>
     </div>
 
-    <div id="toast">🔒 Nur in der Vollversion verfügbar</div>
+    <div id="toast">🔒 Only available in the full version</div>
   </main>
 </div>
 
 <script>
 "use strict";
 
-const addresses = [
-  { id:  1, text: "Ahornweg 2",      notes: "Fam. Sommer" },
-  { id:  2, text: "Ahornweg 5",      notes: "K. Brandt" },
-  { id:  3, text: "Ahornweg 11",     notes: "M. u. G. Winkler" },
-  { id:  4, text: "Birkenstraße 1",  notes: "Fam. Albrecht – Briefkasten am Gartentor" },
-  { id:  5, text: "Birkenstraße 4",  notes: "H. Neumann" },
-  { id:  6, text: "Birkenstraße 9",  notes: "Dr. S. Vogel" },
-  { id:  7, text: "Birkenstraße 14", notes: "Fam. Lorenz" },
-  { id:  8, text: "Drosselgasse 3",  notes: "E. Krämer" },
-  { id:  9, text: "Drosselgasse 7",  notes: "Fam. Böhm – 2 Zeitungen" },
-  { id: 10, text: "Feldstraße 6",    notes: "J. Hartmann" },
-  { id: 11, text: "Feldstraße 8",    notes: "R. Schuster" },
-  { id: 12, text: "Feldstraße 15",   notes: "Fam. Wiedemann" },
-  { id: 13, text: "Feldstraße 21",   notes: "A. Pohl – Seiteneingang" },
-  { id: 14, text: "Lindenplatz 2",   notes: "Fam. Merz" },
-  { id: 15, text: "Lindenplatz 3",   notes: "W. Janssen" },
-  { id: 16, text: "Mühlenweg 4",     notes: "Fam. Otte" },
-  { id: 17, text: "Mühlenweg 10",    notes: "C. Freitag" },
-  { id: 18, text: "Mühlenweg 12",    notes: "G. u. P. Roth" },
-  { id: 19, text: "Rosenhang 1",     notes: "Fam. Steiner" },
-  { id: 20, text: "Rosenhang 8",     notes: "B. Kirchner – Zeitung ins Rohr" }
-];
-const total = addresses.length;
+const PLAY_URL = "https://play.google.com/store/apps/details?id=de.edwing.easytour";
+
+/* ---------- i18n ---------- */
+const I18N = {
+  de: {
+    listName:      "Deine Tour",
+    listSub:       "Aktuelle Liste",
+    startTour:     "▶ Tour starten",
+    startTourAgain:"↺ Tour neu starten",
+    listImport:    "📋 Liste erstellen/importieren",
+    getFull:       "⭐ Vollversion holen",
+    demoHint:      "Kostenlose Demo – enthält Tour<br>mit einer Beispielliste (20 Adressen).",
+    noTour:        "Aktuell läuft keine Tour",
+    progress:      "FORTSCHRITT",
+    doneTitle:     "Fertig!",
+    doneSub:       "Alles ausgeliefert!",
+    exitNoSave:    "Ohne Speichern beenden",
+    saveReport:    "💾 Bericht speichern",
+    nextStops:     "NÄCHSTE STOPPS",
+    btnDone:       "Erledigt – Weiter",
+    btnSkip:       "Überspringen",
+    btnRemark:     "Bemerkung",
+    lightMode:     "Heller Modus",
+    darkMode:      "Dunkler Modus",
+    remarkTitle:   "Bemerkung hinterlassen",
+    remarkPh:      "Was ist aufgefallen?",
+    markDelivered: "Als erledigt markieren",
+    remarkSave:    "✓ Speichern & weiter",
+    cancel:        "Abbrechen",
+    cancelTitle:   "Tour abbrechen?",
+    cancelBody:    "Der bisherige Fortschritt geht verloren. Fortfahren?",
+    keepGoing:     "Weiter machen",
+    confirmCancel: "Tour abbrechen",
+    badgeSkipped:  "⏭ Übersprungen",
+    badgeRemark:   "📝 Bemerkung",
+    tFull:         "🔒 Nur in der Vollversion verfügbar",
+    tEditor:       "🔒 Editor und automatische Routensortierung nur in der Vollversion verfügbar",
+    tStats:        "🔒 Berichte der abgeschlossenen Touren sind nur in der Vollversion verfügbar",
+    tTimes:        "🔒 Tour-Zeiten nur in der Vollversion verfügbar",
+    tSettings:     "🔒 Einstellungen und weitere Features nur in der Vollversion verfügbar"
+  },
+  en: {
+    listName:      "Your tour",
+    listSub:       "Current list",
+    startTour:     "▶ Start tour",
+    startTourAgain:"↺ Restart tour",
+    listImport:    "📋 Create / import list",
+    getFull:       "⭐ Get full version",
+    demoHint:      "Free demo – includes a tour<br>with one sample list (20 addresses).",
+    noTour:        "No tour is currently running",
+    progress:      "PROGRESS",
+    doneTitle:     "Done!",
+    doneSub:       "Everything delivered!",
+    exitNoSave:    "Exit without saving",
+    saveReport:    "💾 Save report",
+    nextStops:     "NEXT STOPS",
+    btnDone:       "Delivered – Next",
+    btnSkip:       "Skip",
+    btnRemark:     "Note",
+    lightMode:     "Light Mode",
+    darkMode:      "Dark Mode",
+    remarkTitle:   "Leave a note",
+    remarkPh:      "What did you notice?",
+    markDelivered: "Mark as delivered",
+    remarkSave:    "✓ Save & continue",
+    cancel:        "Cancel",
+    cancelTitle:   "Cancel tour?",
+    cancelBody:    "Your current progress will be lost. Continue?",
+    keepGoing:     "Keep going",
+    confirmCancel: "Cancel tour",
+    badgeSkipped:  "⏭ Skipped",
+    badgeRemark:   "📝 Note",
+    tFull:         "🔒 Only available in the full version",
+    tEditor:       "🔒 Editor and automatic route sorting are only available in the full version",
+    tStats:        "🔒 Reports for completed tours are only available in the full version",
+    tTimes:        "🔒 Tour times are only available in the full version",
+    tSettings:     "🔒 Settings and further features are only available in the full version"
+  }
+};
+
+let lang = "en";
+function t(key) { return I18N[lang][key]; }
+
+function stopOf(n, tot) {
+  return lang === "de" ? `STOPP ${n} VON ${tot}` : `STOP ${n} OF ${tot}`;
+}
+
+function detectLang() {
+  try {
+    const saved = localStorage.getItem("easytour-demo-lang");
+    if (saved === "de" || saved === "en") return saved;
+  } catch (_) {}
+  const langs = navigator.languages || [navigator.language || ""];
+  return langs.some(l => (l || "").toLowerCase().startsWith("de")) ? "de" : "en";
+}
+
+function applyLang(l) {
+  lang = l;
+  document.documentElement.lang = l;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const v = I18N[l][el.dataset.i18n];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const v = I18N[l][el.dataset.i18nPh];
+    if (v !== undefined) el.placeholder = v;
+  });
+  $("langLabel").textContent = l === "de" ? "DE" : "EN";
+  // Liste nur vorbereiten, solange keine Tour läuft (sonst würde eine
+  // laufende Tour beim Umschalten die Adressen wechseln).
+  if (!tourActive) addresses = ADDRESSES[l] || ADDRESSES.en;
+  updateThemeLabel();
+  try { localStorage.setItem("easytour-demo-lang", l); } catch (_) {}
+  render();
+}
+function toggleLang() { applyLang(lang === "de" ? "en" : "de"); }
+
+/* ---------- Daten ---------- */
+const ADDRESSES = {
+  de: [
+    { id:  1, text: "Ahornweg 2",      notes: "Fam. Sommer" },
+    { id:  2, text: "Ahornweg 5",      notes: "K. Brandt" },
+    { id:  3, text: "Ahornweg 11",     notes: "M. u. G. Winkler" },
+    { id:  4, text: "Birkenstraße 1",  notes: "Fam. Albrecht – Briefkasten am Gartentor" },
+    { id:  5, text: "Birkenstraße 4",  notes: "H. Neumann" },
+    { id:  6, text: "Birkenstraße 9",  notes: "Dr. S. Vogel" },
+    { id:  7, text: "Birkenstraße 14", notes: "Fam. Lorenz" },
+    { id:  8, text: "Drosselgasse 3",  notes: "E. Krämer" },
+    { id:  9, text: "Drosselgasse 7",  notes: "Fam. Böhm – 2 Zeitungen" },
+    { id: 10, text: "Feldstraße 6",    notes: "J. Hartmann" },
+    { id: 11, text: "Feldstraße 8",    notes: "R. Schuster" },
+    { id: 12, text: "Feldstraße 15",   notes: "Fam. Wiedemann" },
+    { id: 13, text: "Feldstraße 21",   notes: "A. Pohl – Seiteneingang" },
+    { id: 14, text: "Lindenplatz 2",   notes: "Fam. Merz" },
+    { id: 15, text: "Lindenplatz 3",   notes: "W. Janssen" },
+    { id: 16, text: "Mühlenweg 4",     notes: "Fam. Otte" },
+    { id: 17, text: "Mühlenweg 10",    notes: "C. Freitag" },
+    { id: 18, text: "Mühlenweg 12",    notes: "G. u. P. Roth" },
+    { id: 19, text: "Rosenhang 1",     notes: "Fam. Steiner" },
+    { id: 20, text: "Rosenhang 8",     notes: "B. Kirchner – Zeitung ins Rohr" }
+  ],
+  en: [
+    { id:  1, text: "2 Maple Lane",      notes: "The Summers" },
+    { id:  2, text: "5 Maple Lane",      notes: "K. Brandt" },
+    { id:  3, text: "11 Maple Lane",     notes: "M. & G. Winkler" },
+    { id:  4, text: "1 Birch Street",    notes: "The Albrights – mailbox at the garden gate" },
+    { id:  5, text: "4 Birch Street",    notes: "H. Newman" },
+    { id:  6, text: "9 Birch Street",    notes: "Dr. S. Vogel" },
+    { id:  7, text: "14 Birch Street",   notes: "The Lorenz family" },
+    { id:  8, text: "3 Thrush Alley",    notes: "E. Kramer" },
+    { id:  9, text: "7 Thrush Alley",    notes: "The Böhm family – 2 newspapers" },
+    { id: 10, text: "6 Field Road",      notes: "J. Hartman" },
+    { id: 11, text: "8 Field Road",      notes: "R. Shuster" },
+    { id: 12, text: "15 Field Road",     notes: "The Wiedemann family" },
+    { id: 13, text: "21 Field Road",     notes: "A. Pohl – side entrance" },
+    { id: 14, text: "2 Linden Square",   notes: "The Merz family" },
+    { id: 15, text: "3 Linden Square",   notes: "W. Janssen" },
+    { id: 16, text: "4 Mill Way",        notes: "The Otte family" },
+    { id: 17, text: "10 Mill Way",       notes: "C. Freitag" },
+    { id: 18, text: "12 Mill Way",       notes: "G. & P. Roth" },
+    { id: 19, text: "1 Rose Hill",       notes: "The Steiner family" },
+    { id: 20, text: "8 Rose Hill",       notes: "B. Kirchner – newspaper in the tube" }
+  ]
+};
+
+// Aktive Liste. Wird beim Tour-Start anhand der Sprache festgelegt,
+// damit eine laufende Tour beim Sprachwechsel nicht die Adressen wechselt.
+let addresses = ADDRESSES.en;
+const total = ADDRESSES.de.length;
 
 let currentIdx   = 0;
 let delivered    = new Set();
@@ -468,28 +644,38 @@ let timerHandle  = null;
 const $ = id => document.getElementById(id);
 const isDone = () => tourActive && currentIdx >= total;
 
-function applyTheme(t) {
-  document.body.dataset.theme = t;
-  $("btnTheme").textContent = t === "dark" ? "☀️ Light Mode" : "🌑 Dark Mode";
-  try { localStorage.setItem("easytour-demo-theme", t); } catch (_) {}
+function updateThemeLabel() {
+  const dark = document.body.dataset.theme === "dark";
+  $("themeIcon").textContent  = dark ? "☀️" : "🌑";
+  $("themeLabel").textContent = dark ? t("lightMode") : t("darkMode");
+}
+function applyTheme(th) {
+  document.body.dataset.theme = th;
+  updateThemeLabel();
+  try { localStorage.setItem("easytour-demo-theme", th); } catch (_) {}
 }
 function toggleTheme() {
   applyTheme(document.body.dataset.theme === "dark" ? "light" : "dark");
 }
-try {
-  const saved = localStorage.getItem("easytour-demo-theme");
-  if (saved) applyTheme(saved);
-} catch (_) {}
 
 function showScreen(s) {
   screen = s;
   $("screenSetup").style.display    = s === "setup"    ? "flex" : "none";
   $("screenDelivery").style.display = s === "delivery" ? "flex" : "none";
+  $("cornerBar").style.display      = s === "setup"    ? "flex" : "none";
   render();
 }
 function goHome()       { showScreen("setup"); }
 function openDelivery() { showScreen("delivery"); }
-function lockedTab()    { toast("🔒 Nur in der Vollversion verfügbar"); }
+
+/* ---------- gesperrte Features / Toasts ---------- */
+function lockedEditor()   { toast(t("tEditor")); }
+function lockedStats()    { toast(t("tStats")); }
+function lockedTimes()    { toast(t("tTimes")); }
+function lockedSettings() { toast(t("tSettings")); }
+function lockedList()     { toast(t("tFull")); }
+function lockedReport()   { toast(t("tFull")); }
+function getFullVersion() { window.open(PLAY_URL, "_blank", "noopener"); }
 
 let toastHandle = null;
 function toast(msg) {
@@ -497,10 +683,11 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(toastHandle);
-  toastHandle = setTimeout(() => el.classList.remove("show"), 2200);
+  toastHandle = setTimeout(() => el.classList.remove("show"), 2600);
 }
 
 function startTour() {
+  addresses    = ADDRESSES[lang] || ADDRESSES.en;
   currentIdx   = 0;
   delivered    = new Set();
   skipped      = new Set();
@@ -541,11 +728,11 @@ function skipAddress() {
   render();
 }
 
-function addRemark(text, markDelivered) {
+function addRemark(text, markDeliveredFlag) {
   const a = addresses[currentIdx];
   undoStack.push({ type: "remark", addressId: a.id, previousIdx: currentIdx, previousRemark: remarks.get(a.id) });
   if (text.trim() === "") remarks.delete(a.id); else remarks.set(a.id, text.trim());
-  if (markDelivered) delivered.add(a.id);
+  if (markDeliveredFlag) delivered.add(a.id);
   currentIdx++;
   render();
 }
@@ -599,8 +786,8 @@ function updateTimer() {
   const s = Math.floor(elapsed / 1000);
   const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
   const pad = n => String(n).padStart(2, "0");
-  const t = hh > 0 ? `${pad(hh)}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
-  $("timerChip").textContent = (paused ? "⏸ " : "⏱ ") + t;
+  const tt = hh > 0 ? `${pad(hh)}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
+  $("timerChip").textContent = (paused ? "⏸ " : "⏱ ") + tt;
 }
 
 function escapeHtml(s) {
@@ -615,7 +802,7 @@ function render() {
   $("btnUndo").style.display = (showPause && undoStack.length > 0 && !paused) ? "flex" : "none";
   $("tabDelivery").classList.toggle("active", screen === "delivery");
 
-  $("btnStartTour").textContent = tourActive ? "↺ Tour neu starten" : "▶ Tour starten";
+  $("btnStartTour").textContent = tourActive ? t("startTourAgain") : t("startTour");
 
   if (screen !== "delivery") return;
 
@@ -634,7 +821,7 @@ function render() {
   $("doneCard").style.display = done ? "flex" : "none";
   if (!done) {
     const a = addresses[currentIdx];
-    $("stopCount").textContent = `STOPP ${currentIdx + 1} VON ${total}`;
+    $("stopCount").textContent = stopOf(currentIdx + 1, total);
     $("addrText").textContent  = a.text;
     $("addrNotes").textContent = a.notes;
     $("addrNotes").style.display = a.notes ? "block" : "none";
@@ -653,8 +840,8 @@ function render() {
       const isDel  = delivered.has(a.id);
       const isSkip = skipped.has(a.id);
       const badge  = isDel  ? '<span class="stopBadge">✓</span>'
-                   : isSkip ? '<span class="stopBadge">⏭ Übersprungen</span>'
-                   : remarks.has(a.id) ? '<span class="stopBadge">📝 Bemerkung</span>' : "";
+                   : isSkip ? `<span class="stopBadge">${t("badgeSkipped")}</span>`
+                   : remarks.has(a.id) ? `<span class="stopBadge">${t("badgeRemark")}</span>` : "";
       html += `<div class="stopItem${(isDel || isSkip) ? " faded" : ""}">
         <span class="idx">${i + 1}</span>
         <div class="body"><div class="t">${escapeHtml(a.text)}</div>${a.notes ? `<div class="n">${escapeHtml(a.notes)}</div>` : ""}</div>
@@ -664,7 +851,14 @@ function render() {
   $("stopList").innerHTML = html;
 }
 
-render();
+/* ---------- Init ---------- */
+try {
+  const savedTheme = localStorage.getItem("easytour-demo-theme");
+  if (savedTheme) document.body.dataset.theme = savedTheme;
+} catch (_) {}
+
+applyLang(detectLang());
+showScreen("setup");
 </script>
 </body>
 </html>
